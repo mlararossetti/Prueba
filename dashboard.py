@@ -1,44 +1,28 @@
+# streamlit_app.py
+
 import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+from google.oauth2 import service_account
+from google.cloud import bigquery
 
-# Título del dashboard
-st.title("Dashboard Básico de Streamlit")
+# Crea el cliente de BigQuery usando las credenciales del archivo de secretos.
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"]
+)
+client = bigquery.Client(credentials=credentials)
 
-# Crear datos de ejemplo
-np.random.seed(42)
-data = pd.DataFrame({
-    'Categoría': ['A', 'B', 'C', 'D'],
-    'Valores': np.random.randint(20, 100, size=4)
-})
+# Función para ejecutar la consulta con almacenamiento en caché.
+@st.cache_data(ttl=600)
+def run_query(query):
+    query_job = client.query(query)
+    rows_raw = query_job.result()
+    # Convertir a una lista de diccionarios para que `st.cache_data` pueda almacenar el resultado.
+    rows = [dict(row) for row in rows_raw]
+    return rows
 
-# Mostrar los datos en una tabla
-st.subheader("Tabla de Datos")
-st.write(data)
+# Modifica la consulta para seleccionar de la tabla `industry` en tu proyecto y dataset específicos.
+rows = run_query("SELECT * FROM `proyecto-final-sh-441422.dataset_name.industry` LIMIT 10")
 
-# Crear un gráfico de barras
-st.subheader("Gráfico de Barras")
-fig, ax = plt.subplots()
-ax.bar(data['Categoría'], data['Valores'], color='skyblue')
-ax.set_xlabel("Categoría")
-ax.set_ylabel("Valores")
-ax.set_title("Gráfico de Barras por Categoría")
-st.pyplot(fig)
-
-# Generar algunos datos para un gráfico de líneas
-st.subheader("Gráfico de Líneas")
-line_data = pd.DataFrame({
-    'Día': np.arange(1, 11),
-    'Valores': np.random.randint(20, 100, size=10)
-})
-st.line_chart(line_data.set_index('Día'))
-
-# Agregar una barra lateral para seleccionar filtros
-st.sidebar.subheader("Filtros")
-categoria_seleccionada = st.sidebar.selectbox("Selecciona una Categoría", data['Categoría'])
-
-# Filtrar los datos en función de la selección
-datos_filtrados = data[data['Categoría'] == categoria_seleccionada]
-st.write(f"Datos filtrados por Categoría '{categoria_seleccionada}':")
-st.write(datos_filtrados)
+# Mostrar resultados.
+st.write("Datos de la tabla 'industry':")
+for row in rows:
+    st.write(row)
