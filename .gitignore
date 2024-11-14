@@ -1,2 +1,2 @@
 # Ignorar claves o credenciales
-.streamlit/secrets.toml
+secrets.toml
